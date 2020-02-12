@@ -12,6 +12,7 @@ from tkinter import ttk
 from tkinter import messagebox
 from tkinter.ttk import Style
 import pymongo
+import datetime
 
 
 """Define only numbers function
@@ -36,12 +37,12 @@ def only_letters(str):
 - return False if it is found 
 """
 def check_number(number_input):
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient["community_service_awards_program"]
-    mycol = mydb["students"]
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
 
     # search the students in the database
-    for student in mycol.find():
+    for student in my_col.find():
         # if the inputted number already exists in the database, return False
         if (student['number'] == number_input):
             return False
@@ -59,17 +60,17 @@ def cancel(window):
 - tree is the widget that displays the student information on the main window
 """
 def load_database(tree):
-    # load database "students"
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient["community_service_awards_program"]
-    mycol = mydb["students"]
+    # load database "community_service_awards_program"
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
 
     # clear the treeview widget (delete all existing entries)
     for child in tree.get_children():
         tree.delete(child)
 
     # insert the updated student information from the database into the tree
-    for student in mycol.find():
+    for student in my_col.find():
         tree.insert('', 'end', text="{}, {}".format(student['last_name'].title(), student['first_name'].title()),
                     values=(student['number'], student['grade'], student['hours']))
 
@@ -79,14 +80,14 @@ def load_database(tree):
 - insert student's first and last name all lowercase, student number, grade, and hours
 """
 def insert_record(first_name, last_name, number, grade, hours):
-    # load database "students"
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient["community_service_awards_program"]
-    mycol = mydb["students"]
+    # load database "community_service_awards_program"
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
 
     """insert the inputted student's information (first and last name are all lowercase in order to make 
     searching case-insensitive"""
-    mycol.insert_one({'first_name': first_name.lower(), 'last_name': last_name.lower(), 'number': number,
+    my_col.insert_one({'first_name': first_name.lower(), 'last_name': last_name.lower(), 'number': number,
                       'grade': grade, 'hours': hours})
 
 
@@ -98,12 +99,12 @@ is changed
 """
 def update_record(first_name, last_name, number, grade, hours):
     # load database
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient["community_service_awards_program"]
-    mycol = mydb["students"]
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
 
     # search for the student number and then update the information associated with that number according to the input
-    mycol.update_one({'number': number}, {"$set": {'first_name': first_name.lower(), 'last_name': last_name.lower(),
+    my_col.update_one({'number': number}, {"$set": {'first_name': first_name.lower(), 'last_name': last_name.lower(),
                                                    'grade': grade, 'hours': hours}})
 
 
@@ -112,12 +113,12 @@ def update_record(first_name, last_name, number, grade, hours):
 - search for the student number and delete the record associated with it
 """
 def delete_record(number):
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient["community_service_awards_program"]
-    mycol = mydb["students"]
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
 
-    # search for the student number of the selected student in the database and delete the record associated it
-    mycol.delete_one({'number': number})
+    # search for the student number of the selected student in the students database and delete the record associated it
+    my_col.delete_one({'number': number})
 
 
 """Allows user to search for a student
@@ -137,23 +138,23 @@ def search_student(name_entry, tree):
         return
 
     # load database
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient["community_service_awards_program"]
-    mycol = mydb["students"]
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
 
     # if nothing was inputted, display all students
     if (len(names) == 0):
-        results = mycol.find()
+        results = my_col.find()
 
     # if one name was inputted, search if it matches a first name or last name in the database
     elif (len(names) == 1):
-        results = mycol.find({"$or": [{'first_name': full_name}, {'last_name': full_name}]})
+        results = my_col.find({"$or": [{'first_name': full_name}, {'last_name': full_name}]})
 
     # if first and last name were inputted, set variable for each name and search for both in the database
     else:
         first_name = full_name[0]
         last_name = full_name[1]
-        results = mycol.find({"$and": [{'first_name': first_name}, {'last_name': last_name}]})
+        results = my_col.find({"$and": [{'first_name': first_name}, {'last_name': last_name}]})
 
     # if at least one result was found, display student/students on the treeview widget
     if (results.count() > 0):
@@ -514,24 +515,177 @@ def delete_student(tree):
         load_database(tree)
 
 
+"""Sort the names of the students alphabetically
+- if you click on the name header of treeview, it sorts the names either alphabetically or reverse-alphabetically
+"""
 def treeview_sort_name_column(tree, col, reverse):
+    # fill list by looping through each student in treeview
     students_list = [(tree.item(student)['text'], student) for student in tree.get_children()]
+    # sort names
     students_list.sort(key=lambda t: t[0], reverse=reverse)
 
+    # reorders each student in treeview
     for index, (full_name, student) in enumerate(students_list):
         tree.move(student, '', index)
 
+    # everytime you click it, it sorts either alphabetically or reverse-alphabetically depending on reverse value
     tree.heading(col, command=lambda: treeview_sort_name_column(tree, col, not reverse))
 
 
+"""Sort numbers in numerical order
+- if you click on the name header of treeview, it sorts the names either alphabetically or reverse-alphabetically
+"""
 def treeview_sort_number_column(tree, col, reverse, value):
+    # fill list by looping through each student in treeview
     students_list = [(tree.item(student)['values'][value], student) for student in tree.get_children()]
+    # sort numbers
     students_list.sort(key=lambda t: t[0], reverse=reverse)
 
+    # reorders each student in treeview
     for index, (full_name, student) in enumerate(students_list):
         tree.move(student, '', index)
 
+    # everytime you click it, it sorts in ascending or descending order depending on reverse value
     tree.heading(col, command=lambda: treeview_sort_number_column(tree, col, not reverse, value))
+
+
+"""Insert student info in database into textbox
+- show in student hours monthly report window
+- sort names alphabetically by first name
+- insert name and hours into textbox
+"""
+def load_student_hours_report(textbox):
+    # load database "community_service_awards_program"
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
+
+    # insert the updated student information from the database into the textbox
+    for student in my_col.find().sort('first_name'):
+        textbox.insert(INSERT, "{} {}: {}\n".format(
+            student['first_name'].title(), student['last_name'].title(), student['hours']))
+
+
+"""Create new window with this month's student hours
+- display today's date
+- print student names alphabetically and their hours (by calling load_student_hours_report)
+"""
+def monthly_student_hours():
+    # create new window
+    monthly_student_hours_window = Toplevel()
+    # set title of window to "Edit Student Information"
+    monthly_student_hours_window.title("This Month's Student Hours Report")
+
+    # create textbox
+    student_hours_textbox = Text(monthly_student_hours_window, yscrollcommand=True, wrap=WORD, padx=10,
+                                 font='verdana 14')
+
+    # create title label
+    window_title = Label(monthly_student_hours_window, text="This Month's Student Hours Report", font='verdana 18 bold')
+    window_title.pack()
+
+    # add current date into textbox
+    current_date = datetime.date.today()
+    student_hours_textbox.insert(INSERT, "{}\n\n".format(current_date))
+
+    # call function to insert student name and hours into the textbox
+    load_student_hours_report(student_hours_textbox)
+
+    # set textbox to read-only
+    student_hours_textbox.configure(state=DISABLED)
+    # pack textbox onto window
+    student_hours_textbox.pack(fill=BOTH, expand=TRUE)
+
+
+"""Fill monthly award program hours textbox
+- sort the students into three categories based on their hours
+- insert information into textbox
+"""
+def load_award_hours_report(textbox):
+    # load database "community_service_awards_program"
+    my_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    my_db = my_client["community_service_awards_program"]
+    my_col = my_db["students"]
+
+    # creating empty lists for the three award categories
+    community = []
+    service = []
+    achievement = []
+    # setting initial value for total chapter hours
+    total_hours = 0
+
+    # insert the updated student information from the database into the textbox
+    for student in my_col.find():
+        # community 50-199
+        if (int(student['hours']) >= 50 and int(student['hours']) < 200):
+            community.append("{} {}".format(student['first_name'].title(), student['last_name'].title()))
+        # service 200-499
+        if (int(student['hours']) >= 200 and int(student['hours']) < 500):
+            service.append("{} {}".format(student['first_name'].title(), student['last_name'].title()))
+        # achievement 500+
+        if (int(student['hours']) >= 500):
+            achievement.append("{} {}".format(student['first_name'].title(), student['last_name'].title()))
+        # add each student's hours to total_hours
+        total_hours += int(student['hours'])
+
+    # insert total chapter hours into textbox
+    textbox.insert(INSERT, "TOTAL CHAPTER HOURS: {}\n\n".format(total_hours))
+
+    # community award category
+    textbox.insert(INSERT, "COMMUNITY - 50 hours\n")
+    # total number of students in category
+    textbox.insert(INSERT, "Total number of students: {}\n".format(len(community)))
+    # print students in category
+    for community_student in community:
+        textbox.insert(INSERT, "{}\n".format(community_student))
+
+    # service award category
+    textbox.insert(INSERT, "\nSERVICE - 200 hours\n")
+    # total number of students in category
+    textbox.insert(INSERT, "Total number of students: {}\n".format(len(service)))
+    # print students in category
+    for service_student in service:
+        textbox.insert(INSERT, "{}\n".format(service_student))
+
+    # service award category
+    textbox.insert(INSERT, "\nACHIEVEMENT - 500 hours")
+    # total number of students in category
+    textbox.insert(INSERT, "\nTotal number of students: {}\n".format(len(achievement)))
+    # print students in category
+    for achievement_student in achievement:
+        textbox.insert(INSERT, "{}\n".format(achievement_student))
+
+
+"""Create window that displays this month's award program hours report
+- today's date
+- total chapter hours
+- award program categories: display total number of students in that category and the student names
+"""
+def monthly_award_hours():
+    # create new window
+    monthly_award_hours_window = Toplevel()
+    # set title of window to "Edit Student Information"
+    monthly_award_hours_window.title("This Month's Award Program Hours Report")
+
+    # create title label
+    window_title = Label(monthly_award_hours_window, text="This Month's Award Program Hours Report",
+                         font='verdana 18 bold')
+    window_title.pack()
+
+    # create textbox
+    award_hours_textbox = Text(monthly_award_hours_window, yscrollcommand=True, wrap=WORD, padx=10,
+                               font='verdana 14')
+    # add current date into textbox
+    current_date = datetime.date.today()
+    award_hours_textbox.insert(INSERT, "{}\n".format(current_date))
+
+    # call function to fill the textbox
+    load_award_hours_report(award_hours_textbox)
+
+    # set textbox as read-only
+    award_hours_textbox.configure(state=DISABLED)
+    # pack textbox onto window
+    award_hours_textbox.pack(fill=BOTH, expand=TRUE)
 
 
 """Main window
@@ -561,11 +715,6 @@ def main():
     top_bottom_frame = Frame(top_frame)
     top_bottom_frame.pack(side=BOTTOM, fill=BOTH)
 
-    # allow columns and the row in top_bottom frame to expand/fill the space
-    Grid.columnconfigure(top_bottom_frame, 0, weight=1)
-    Grid.columnconfigure(top_bottom_frame, 1, weight=1)
-    Grid.rowconfigure(top_bottom_frame, 0, weight=1)
-
     # create a center frame
     center_frame = Frame(root)
     center_frame.pack(fill=BOTH, expand=TRUE)
@@ -573,6 +722,12 @@ def main():
     # create a bottom frame
     bottom_frame = Frame(root)
     bottom_frame.pack(side=BOTTOM, fill=BOTH)
+
+    # allow columns and the row in top_bottom frame to expand/fill the space
+    Grid.columnconfigure(top_bottom_frame, 0, weight=1)
+    Grid.columnconfigure(top_bottom_frame, 1, weight=1)
+    Grid.columnconfigure(bottom_frame, 1, weight=1)
+    Grid.rowconfigure(top_bottom_frame, 0, weight=1)
 
     # create title label: "COMMUNITY SERVICE HOURS PROGRAM"
     title_label = Label(top_top_frame, text="COMMUNITY SERVICE HOURS PROGRAM", font='verdana 18 bold', bg='yellow')
@@ -619,20 +774,30 @@ def main():
     scrollbar.configure(command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set)
 
+    # create register button
+    register_button = Button(bottom_frame, text="Register New Student",
+                             command=lambda: register_new_student(tree), font='verdana 14 bold')
+    register_button.grid(row=0, column=0, padx=30, pady=30)
+
     # create edit button
     edit_button = Button(bottom_frame, text="Edit Student Information",
                          command=lambda: edit_info(tree), font='verdana 14 bold')
-    edit_button.pack(side=TOP, padx=30, pady=30)
+    edit_button.grid(row=0, column=1, padx=30, pady=30)
 
     # create delete button
     delete_button = Button(bottom_frame, text="Delete Student",
                            command=lambda: delete_student(tree), font='verdana 14 bold')
-    delete_button.pack(side=TOP, padx=30, pady=30)
+    delete_button.grid(row=0, column=2, padx=30, pady=30)
 
-    # create register button
-    register_button = Button(bottom_frame, text="Register New Student",
-                             command=lambda: register_new_student(tree), font='verdana 14 bold')
-    register_button.pack(side=TOP, padx=30, pady=30)
+    # create button for monthly report of total community service hours per student
+    monthly_student_hours_button = Button(bottom_frame, text="This Month's Student Hours Report",
+                                          command=lambda: monthly_student_hours(), font='verdana 14 bold')
+    monthly_student_hours_button.grid(row=1, column=1, padx=30, pady=30)
+
+    # create button for monthly report of community service hours program categories
+    monthly_award_hours_button = Button(bottom_frame, text="This Month's Award Program Hours Report",
+                                        command=lambda: monthly_award_hours(), font='verdana 14 bold')
+    monthly_award_hours_button.grid(row=2, column=1, padx=30, pady=30)
 
     # keeps root window running until destroyed
     root.mainloop()
