@@ -1,7 +1,7 @@
 # Coding-and-Programming-2020-Karen-Gao
 Instructions:
-1. Download and install Python 3.7
-2. Download and install MongoDB community server
+1. Download and install Python 3.7 (https://www.python.org/downloads/)
+2. Download and install MongoDB community server (https://www.mongodb.com/download-center/community)
 3. pip install pymongo in command prompt or terminal
 4. Run "straight_to_state_2020.py" in Python shell
 
